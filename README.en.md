@@ -115,24 +115,66 @@ diagnostics through a temporary file, so it also works in restricted environment
 pipes. Interpreters are tried in the order `python`, `py`, `python3`; set
 `DSH_CODE_HIGHLIGHT_PYTHON` to name one explicitly.
 
+## Architecture
+
+```mermaid
+flowchart TD
+    call(["highlight_code call<br/>code · language · format · output_file"])
+    entry["index.js<br/>argument parsing · dispatch · output"]
+    detect["src/detect.js<br/>feature scoring"]
+    langs["src/languages.js<br/>lexical rules for 68 languages"]
+    tokenize["src/tokenize.js<br/>generic tokenizer + per-mode scanners"]
+    themes["src/themes.js<br/>7 themes"]
+    render["src/render.js<br/>renderers + blockGeometry"]
+    raster["py/rasterize.py<br/>Pillow rasterizer"]
+
+    call --> entry
+    entry -->|"language omitted"| detect
+    detect --> langs
+    entry --> langs
+    langs --> tokenize
+    tokenize -->|"tokens per line"| render
+    themes --> render
+    entry --> render
+    render --> f1["html · html-file"]
+    render --> f2["svg"]
+    render --> f3["latex · latex-minted"]
+    render --> f4["ansi · markdown · text"]
+    render -->|"size and scale"| raster
+    f1 --> d1["Markdown / HTML reports"]
+    f2 --> d2["Word / PowerPoint / PDF figures"]
+    f3 --> d3["LaTeX papers"]
+    raster --> d4["DPI-tagged bitmap"]
+```
+
+The SVG and the PNG are two exits of one geometry: `render.js` computes the logical
+size and scale factor and hands them to `rasterize.py`, so both artifacts match in
+physical size.
+
 ## Project layout
 
-```
-.
-├── index.js              # Plugin entry: tool definition, argument parsing, format dispatch, output
-├── src/
-│   ├── languages.js      # Lexical definitions for 68 languages
-│   ├── detect.js         # Language auto-detection by feature scoring
-│   ├── tokenize.js       # Generic tokenizer plus per-mode scanners
-│   ├── themes.js         # 7 color themes
-│   └── render.js         # HTML / SVG / LaTeX / ANSI / Markdown renderers and shared geometry
-├── py/rasterize.py       # Pillow rasterizer using the same grid model
-├── tests/smoke.mjs       # 112 assertions: round-trip, render matrix, detection, geometry
-├── tests/rasterize.mjs   # PNG pipeline test (needs Python + Pillow)
-├── scripts/              # Example-artifact generators
-├── examples/             # Example artifacts
-├── locale/{zh,en}.json   # Plugin card text
-└── cordis.patch.yml      # DSH bundle manifest
+```mermaid
+flowchart TB
+    repo["dsh-code-highlight/"]
+
+    repo --> index["index.js<br/>plugin entry"]
+    repo --> src["src/"]
+    repo --> py["py/rasterize.py<br/>Pillow rasterizer"]
+    repo --> tests["tests/"]
+    repo --> scripts["scripts/<br/>example generators"]
+    repo --> examples["examples/<br/>example artifacts"]
+    repo --> manifest["package.json · cordis.patch.yml<br/>locale/ · icon.svg"]
+    repo --> docs["README.md · README.en.md<br/>CONTRIBUTING.md · CHANGELOG.md · LICENSE"]
+
+    src --> languages["languages.js<br/>68 languages"]
+    src --> detect["detect.js<br/>detection"]
+    src --> tokenize["tokenize.js<br/>tokenizer"]
+    src --> themes["themes.js<br/>7 themes"]
+    src --> render["render.js<br/>renderers + geometry"]
+
+    tests --> encoding["encoding.mjs<br/>encoding guard"]
+    tests --> smoke["smoke.mjs<br/>112 assertions"]
+    tests --> raster["rasterize.mjs<br/>19 assertions"]
 ```
 
 ## Development

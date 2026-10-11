@@ -118,24 +118,65 @@ PNG 绘制时按字符选字体：ASCII 走等宽字体（默认 Consolas），�
 因此在禁止捕获管道的受限环境里同样可用。解释器按 `python`、`py`、`python3` 依次尝试，
 也可用环境变量 `DSH_CODE_HIGHLIGHT_PYTHON` 指定。
 
+## 架构
+
+```mermaid
+flowchart TD
+    call(["highlight_code 调用<br/>code · language · format · output_file"])
+    entry["index.js<br/>参数解析 · 格式分派 · 落盘"]
+    detect["src/detect.js<br/>特征打分"]
+    langs["src/languages.js<br/>68 种语言的词法定义"]
+    tokenize["src/tokenize.js<br/>通用分词器 + 专用扫描模式"]
+    themes["src/themes.js<br/>7 套主题"]
+    render["src/render.js<br/>渲染器 + blockGeometry 共用几何"]
+    raster["py/rasterize.py<br/>Pillow 栅格化器"]
+
+    call --> entry
+    entry -->|"language 省略时"| detect
+    detect --> langs
+    entry --> langs
+    langs --> tokenize
+    tokenize -->|"每行 token"| render
+    themes --> render
+    entry --> render
+    render --> f1["html · html-file"]
+    render --> f2["svg"]
+    render --> f3["latex · latex-minted"]
+    render --> f4["ansi · markdown · text"]
+    render -->|"宽高与缩放"| raster
+    f1 --> d1["Markdown / HTML 报告"]
+    f2 --> d2["Word / PPT / PDF 插图"]
+    f3 --> d3["LaTeX 论文"]
+    raster --> d4["记录 DPI 的位图"]
+```
+
+SVG 与 PNG 是同一份几何的两个出口：`render.js` 算出逻辑宽高与缩放系数，
+交给 `rasterize.py` 画位图，两者因此物理尺寸一致。
+
 ## 项目结构
 
-```
-.
-├── index.js              # 插件入口：工具定义、参数解析、格式分派、落盘与栅格化调用
-├── src/
-│   ├── languages.js      # 68 种语言的词法定义表
-│   ├── detect.js         # 语言自动识别（特征打分）
-│   ├── tokenize.js       # 通用分词器 + 各专用扫描模式
-│   ├── themes.js         # 7 套主题配色
-│   └── render.js         # HTML / SVG / LaTeX / ANSI / Markdown 渲染器与共用几何
-├── py/rasterize.py       # Pillow 栅格化器（同一网格模型）
-├── tests/smoke.mjs       # 112 项断言：分词不变式、渲染矩阵、识别、排版几何
-├── tests/rasterize.mjs   # PNG 链路测试（需要 Python + Pillow）
-├── scripts/              # 示例产物生成脚本
-├── examples/             # 示例产物
-├── locale/{zh,en}.json   # 插件卡片文案
-└── cordis.patch.yml      # DSH bundle 清单
+```mermaid
+flowchart TB
+    repo["dsh-code-highlight/"]
+
+    repo --> index["index.js<br/>插件入口"]
+    repo --> src["src/"]
+    repo --> py["py/rasterize.py<br/>Pillow 栅格化器"]
+    repo --> tests["tests/"]
+    repo --> scripts["scripts/<br/>示例生成脚本"]
+    repo --> examples["examples/<br/>示例产物"]
+    repo --> manifest["package.json · cordis.patch.yml<br/>locale/ · icon.svg"]
+    repo --> docs["README.md · README.en.md<br/>CONTRIBUTING.md · CHANGELOG.md · LICENSE"]
+
+    src --> languages["languages.js<br/>68 种语言"]
+    src --> detect["detect.js<br/>语言识别"]
+    src --> tokenize["tokenize.js<br/>分词器"]
+    src --> themes["themes.js<br/>7 套主题"]
+    src --> render["render.js<br/>渲染器 + 共用几何"]
+
+    tests --> encoding["encoding.mjs<br/>编码守卫"]
+    tests --> smoke["smoke.mjs<br/>112 项断言"]
+    tests --> raster["rasterize.mjs<br/>19 项断言"]
 ```
 
 ## 开发
