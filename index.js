@@ -173,7 +173,7 @@ const OUTPUT_SCHEMA = {
     characters: { type: 'integer', description: 'Length of the rendered content in characters.' },
     detected: { type: 'boolean', description: 'True when the language was detected from the code rather than given.' },
     recognized: { type: 'boolean', description: 'False when the language was unknown and the snippet was rendered as plain text.' },
-    content: { type: 'string', description: 'The rendered artifact, when it was not written to a file: HTML fragment, HTML document, SVG, LaTeX, Markdown, ANSI text, or the code itself.' },
+    content: { type: 'string', description: 'The rendered artifact, when it was not written to a file: HTML fragment, HTML document, SVG, LaTeX, Markdown, ANSI text, or the code itself. Empty when everything went to `files`.' },
     files: {
       type: 'array',
       description: 'Artifacts written by this call.',
@@ -362,7 +362,7 @@ function defineHighlightTool() {
         }
       }
 
-      return {
+      const value = {
         language: language.id,
         languageName: language.name,
         format,
@@ -371,10 +371,11 @@ function defineHighlightTool() {
         characters,
         detected,
         recognized,
-        content,
+        content: content === null ? '' : content,
         files,
-        rasterizer: rasterizer ? rasterizer.info : null,
       };
+      if (rasterizer) value.rasterizer = rasterizer.info;
+      return value;
     },
   };
 }
