@@ -27,17 +27,29 @@ PowerPoint, PDF and LaTeX.
 
 ## Install
 
-### As a DSH plugin
+### Install from GitHub (CLI)
 
-Call `plugin_manager` inside a DSH session:
+```bash
+dsh plugin --profile desktop add github:scientificmaniac/dsh-code-highlight
+```
+
+- Replace `--profile desktop` with your profile name: DSH Desktop uses `desktop`, the Web build usually `web`.
+- Quit the Desktop app completely before running it: `dsh plugin` takes the profile's write lock exclusively.
+- `dsh plugin --profile <p> <args>` forwards its arguments to pnpm unchanged, so a pinned tag works too:
+  `... add github:scientificmaniac/dsh-code-highlight#v1.0.0`.
+
+### Install inside a DSH session
+
+Ask the agent to call `plugin_manager`:
 
 ```
 action: install_bundle
 target: <absolute path to this repository>
 ```
 
-`cordis.patch.yml` inserts the plugin row, and `highlight_code` becomes available to every session in
-that profile. Restart DSH after changing plugin sources: a running session keeps the module it loaded.
+Either path inserts the plugin row from `cordis.patch.yml`, and `highlight_code` becomes available to
+every session in that profile. Restart DSH after changing plugin sources: a running session keeps the
+module it loaded.
 
 ### As a library
 

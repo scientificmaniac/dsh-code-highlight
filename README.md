@@ -27,16 +27,27 @@
 
 ## 安装
 
-### 作为 DSH 插件
+### 从 GitHub 安装（CLI）
 
-在 DSH 会话中调用 `plugin_manager`：
+```bash
+dsh plugin --profile desktop add github:scientificmaniac/dsh-code-highlight
+```
+
+- `--profile` 换成你的 profile 名：DSH Desktop 用 `desktop`，Web 版通常是 `web`。
+- Desktop 版请**先完全退出应用**再执行——`dsh plugin` 要独占 profile 的写锁。
+- `dsh plugin --profile <p> <args>` 把参数原样交给 pnpm，所以要固定版本可以直接写
+  `dsh plugin --profile desktop add github:scientificmaniac/dsh-code-highlight#v1.0.0`。
+
+### 在 DSH 会话里安装
+
+让 Agent 调用 `plugin_manager`：
 
 ```
 action: install_bundle
 target: <本仓库的绝对路径>
 ```
 
-包内 `cordis.patch.yml` 会插入一行插件条目；安装后 `highlight_code` 对当前 profile 的所有会话可用。
+两种方式都用包内 `cordis.patch.yml` 插入插件条目；安装后 `highlight_code` 对该 profile 的所有会话可用。
 修改源码后需要重启 DSH 才会加载新模块。
 
 ### 供其他项目直接引用
