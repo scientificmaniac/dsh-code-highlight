@@ -138,7 +138,7 @@ pipes. Interpreters are tried in the order `python`, `py`, `python3`; set
 ## Development
 
 ```bash
-npm test                          # Smoke tests (no Python required)
+npm test                          # Encoding guard + smoke tests (no Python required)
 npm run test:raster               # PNG pipeline test (needs Python 3 + Pillow)
 node scripts/make-doc-figure.mjs  # Regenerate the paired SVG + PNG figure
 ```

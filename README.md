@@ -141,7 +141,7 @@ PNG 绘制时按字符选字体：ASCII 走等宽字体（默认 Consolas），�
 ## 开发
 
 ```bash
-npm test                                  # 冒烟测试（无需 Python）
+npm test                                  # 编码守卫 + 冒烟测试（无需 Python）
 npm run test:raster                       # PNG 链路测试（需要 Python 3 + Pillow）
 node scripts/make-doc-figure.mjs          # 生成配对的 SVG + PNG 文档插图
 ```

@@ -33,6 +33,7 @@ npm run test:raster # 改了 py/ 或几何相关代码时也要跑
 - 输出产物必须自包含：HTML 用内联样式，SVG 用内联属性，LaTeX 自带宏包注释。
 - 保持零运行时依赖。需要新能力时优先扩展现有模块，而不是引入 npm 包。
 - `.editorconfig` 已规定缩进与换行，请勿提交 CRLF。
+- 所有文本文件一律 **UTF-8 无 BOM**。不要用 Windows PowerShell 5.1 的 `Get-Content` / `Set-Content` 做文本替换：它会把 UTF-8 当 ANSI 读、并写入 BOM，中文会整体变成乱码；`npm test` 的编码守卫会直接拦下这类提交。
 
 ## 新增一种语言
 

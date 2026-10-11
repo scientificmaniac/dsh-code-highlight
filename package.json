@@ -47,7 +47,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node tests/smoke.mjs",
+    "test": "node tests/encoding.mjs && node tests/smoke.mjs",
+    "test:encoding": "node tests/encoding.mjs",
     "test:raster": "node tests/rasterize.mjs",
     "example:figure": "node scripts/make-doc-figure.mjs"
   },

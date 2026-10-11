@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 新增
+
+- `npm test` 现在先跑编码守卫（`tests/encoding.mjs`）：仓库文本文件必须是合法 UTF-8、不带 BOM、且不含乱码特征字。
+
 ### 修复
 
 - 写文件的格式（`png`、`svg-png` 以及带 `output_file` 的其他格式）返回的 `content` 为空，
