@@ -1,0 +1,18 @@
+# 统一以 LF 存储与检出，与 .editorconfig 保持一致
+* text=auto eol=lf
+
+# 二进制产物不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pptx binary
+*.docx binary
+*.xlsx binary
+*.pdf binary
+*.ttf binary
+*.ttc binary
+*.otf binary
+*.woff binary
+*.woff2 binary

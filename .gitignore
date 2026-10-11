@@ -1,0 +1,23 @@
+# 依赖与构建产物
+node_modules/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# 编辑器与操作系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# 测试与示例脚本的生成物
+smoke-report.txt
+examples/doc-figure.spec.json
+
+# DSH / Univer 运行时产物
+*.univer
+.univer/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
