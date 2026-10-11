@@ -122,7 +122,7 @@ PNG 绘制时按字符选字体：ASCII 走等宽字体（默认 Consolas），�
 
 ```mermaid
 flowchart TD
-    call(["highlight_code 调用<br/>code · language · format · output_file"])
+    invoke(["highlight_code 调用<br/>code · language · format · output_file"])
     entry["index.js<br/>参数解析 · 格式分派 · 落盘"]
     detect["src/detect.js<br/>特征打分"]
     langs["src/languages.js<br/>68 种语言的词法定义"]
@@ -131,7 +131,7 @@ flowchart TD
     render["src/render.js<br/>渲染器 + blockGeometry 共用几何"]
     raster["py/rasterize.py<br/>Pillow 栅格化器"]
 
-    call --> entry
+    invoke --> entry
     entry -->|"language 省略时"| detect
     detect --> langs
     entry --> langs

@@ -119,7 +119,7 @@ pipes. Interpreters are tried in the order `python`, `py`, `python3`; set
 
 ```mermaid
 flowchart TD
-    call(["highlight_code call<br/>code · language · format · output_file"])
+    invoke(["highlight_code call<br/>code · language · format · output_file"])
     entry["index.js<br/>argument parsing · dispatch · output"]
     detect["src/detect.js<br/>feature scoring"]
     langs["src/languages.js<br/>lexical rules for 68 languages"]
@@ -128,7 +128,7 @@ flowchart TD
     render["src/render.js<br/>renderers + blockGeometry"]
     raster["py/rasterize.py<br/>Pillow rasterizer"]
 
-    call --> entry
+    invoke --> entry
     entry -->|"language omitted"| detect
     detect --> langs
     entry --> langs
