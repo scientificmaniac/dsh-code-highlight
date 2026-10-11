@@ -5,6 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](package.json)
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](#install)
+[![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/dshplugin/dsh-plugin-hub)
 
 A DeepSeek Harness (DSH) plugin that highlights code for **report-style documents**. It registers a
 `highlight_code` tool that turns a snippet into a colored artifact ready for Markdown / HTML, Word,
