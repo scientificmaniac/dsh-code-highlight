@@ -18,6 +18,7 @@ examples/doc-figure.spec.json
 build/
 formats/
 /*.docx
+/*.tgz
 
 # DSH / Univer 运行时产物
 *.univer
