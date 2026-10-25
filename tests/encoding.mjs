@@ -23,7 +23,7 @@ const BINARY_EXT = new Set([
   '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.bmp',
   '.pdf', '.pptx', '.docx', '.xlsx',
   '.ttf', '.ttc', '.otf', '.woff', '.woff2',
-  '.zip', '.gz', '.univer',
+  '.zip', '.gz', '.tgz', '.univer',
 ]);
 
 /**
