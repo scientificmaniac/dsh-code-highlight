@@ -4,6 +4,13 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+- 发布到 npm（`dsh-code-highlight@1.1.0`）；两份 README 补充 npm 安装方式（预构建、免 `allowBuilds`）与版本徽章，
+  GitHub 安装示例的固定版本同步为 `#v1.1.0`。
+
 ## [1.1.0] - 2026-10-25
 
 SyntaxHighlighter 经典主题（codeinword.com 同款）、高亮 HTML 导入导出、Word 友好的表格版式输出。

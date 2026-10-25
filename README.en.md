@@ -3,6 +3,7 @@
 **English** | [中文](README.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/dsh-code-highlight.svg)](https://www.npmjs.com/package/dsh-code-highlight)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](package.json)
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](#install)
 [![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/dshplugin/dsh-plugin-hub)
@@ -31,6 +32,17 @@ PowerPoint, PDF and LaTeX.
 
 ## Install
 
+### Install from npm (recommended)
+
+```bash
+dsh plugin --profile desktop add dsh-code-highlight
+```
+
+- npm installs the prebuilt package, which **skips the `allowBuilds` build-approval step** — one command and you are done.
+- Pin a version with `dsh plugin --profile desktop add dsh-code-highlight@1.1.0`.
+- Replace `--profile desktop` with your profile name: DSH Desktop uses `desktop`, the Web build usually `web`; quit the Desktop app before running.
+- Package page: <https://www.npmjs.com/package/dsh-code-highlight>.
+
 ### Install from GitHub (CLI)
 
 ```bash
@@ -40,7 +52,7 @@ dsh plugin --profile desktop add github:scientificmaniac/dsh-code-highlight
 - Replace `--profile desktop` with your profile name: DSH Desktop uses `desktop`, the Web build usually `web`.
 - Quit the Desktop app completely before running it: `dsh plugin` takes the profile's write lock exclusively.
 - `dsh plugin --profile <p> <args>` forwards its arguments to pnpm unchanged, so a pinned tag works too:
-  `... add github:scientificmaniac/dsh-code-highlight#v1.0.0`.
+  `... add github:scientificmaniac/dsh-code-highlight#v1.1.0`.
 
 ### Install inside a DSH session
 
@@ -51,11 +63,17 @@ action: install_bundle
 target: <absolute path to this repository>
 ```
 
-Either path inserts the plugin row from `cordis.patch.yml`, and `highlight_code` becomes available to
+All three paths insert the plugin row from `cordis.patch.yml`, and `highlight_code` becomes available to
 every session in that profile. Restart DSH after changing plugin sources: a running session keeps the
 module it loaded.
 
 ### As a library
+
+```bash
+npm install dsh-code-highlight
+```
+
+Or clone the sources and build from scratch:
 
 ```bash
 git clone https://github.com/scientificmaniac/dsh-code-highlight.git
