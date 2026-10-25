@@ -14,6 +14,11 @@ Thumbs.db
 smoke-report.txt
 examples/doc-figure.spec.json
 
+# 本地验证产物（格式测试、Word 演示）
+build/
+formats/
+/*.docx
+
 # DSH / Univer 运行时产物
 *.univer
 .univer/

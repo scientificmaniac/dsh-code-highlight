@@ -17,8 +17,12 @@
 ## 特性
 
 - **68 种语言** —— 按语言名、别名或文件扩展名解析；没有给定语言时按内容自动识别，识别不出就老实按纯文本处理。
-- **10 种输出** —— `html`、`html-file`、`svg`、`svg-png`、`png`、`latex`、`latex-minted`、`markdown`、`ansi`、`text`。
-- **7 套主题** —— `paper-light`（文档向）、`github-dark`、`github-light`、`one-dark`、`monokai`、`solarized-light`、`solarized-dark`，另有 `auto`。
+- **11 种输出** —— `html`、`html-file`、`sh-html`、`svg`、`svg-png`、`png`、`latex`、`latex-minted`、`markdown`、`ansi`、`text`。
+- **codeinword / SyntaxHighlighter HTML 导入** —— 把 [codeinword.com](https://www.codeinword.com/) 导出的高亮 HTML 直接作为输入，
+  转成行内样式 HTML、SVG、PNG、LaTeX 等任意格式（可顺手换主题）；也能反向导出这种标记格式。
+- **15 套主题** —— `paper-light`（文档向）、`github-dark`、`github-light`、`one-dark`、`monokai`、`solarized-light`、`solarized-dark`，
+  以及 [codeinword.com](https://www.codeinword.com/) 所演示的 SyntaxHighlighter 3.0.83 经典八式：
+  `sh-default`、`sh-django`、`sh-eclipse`、`sh-emacs`、`sh-fadetogrey`、`sh-mdultra`、`sh-midnight`、`sh-rdark`，另有 `auto`。
 - **矢量与位图共用一套几何** —— SVG 与 PNG 由同一个布局模型产出，物理尺寸与逐格位置一致。
 - **面向文档的排版参数** —— `width_in`、`dpi`、`font_size_pt`、`line_height`、`show_title`，直接产出能贴进 Word 一页宽的图。
 - **直接落盘** —— 给出 `output_file` 就写文件并返回路径，不再把长文回传给模型。
@@ -74,7 +78,8 @@ import { renderHtml } from 'dsh-code-highlight/src/render.js';
 | `code`（必填） | 要高亮的源码；允许整段被 Markdown 围栏包住。 |
 | `language` | 语言 id、别名或扩展名，如 `python`、`py`、`ts`、`c++`、`bash`、`sql`、`latex`。省略则自动识别。 |
 | `format` | 输出格式，默认 `html`。 |
-| `theme` | 主题 id 或 `auto`。报告排版推荐 `paper-light`。 |
+| `input_format` | `code` 的解读方式：`auto`（默认，自动识别 SyntaxHighlighter 标记）、`text`（按普通源码）、`sh-html`（强制按高亮 HTML 解析）。 |
+| `theme` | 主题 id 或 `auto`。报告排版推荐 `paper-light`。SyntaxHighlighter 主题可用别名 `django`、`eclipse`、`emacs`、`fadetogrey`、`mdultra`、`midnight`、`rdark`、`codeinword` 等。 |
 | `dark` | 仅 `theme: "auto"` 时生效的明暗偏好，默认深色。 |
 | `title` | 代码块标签，通常是文件名或片段用途。 |
 | `show_title` | 是否显示 `title`，默认 `true`；设 `false` 可彻底去掉文件名。 |
@@ -98,8 +103,9 @@ import { renderHtml } from 'dsh-code-highlight/src/render.js';
 
 | `format` | 产物 | 典型落点 |
 | --- | --- | --- |
-| `html` | 全内联样式的 HTML 片段 | Markdown 报告、HTML 报告、邮件、可粘贴的富文本 |
+| `html` | 全内联样式的 HTML 片段（表格版式：行号独立成列、缩进用 `&nbsp;`，Word / WPS / LibreOffice 粘贴即得逐行彩色文本） | Markdown 报告、HTML 报告、邮件、Word 原生粘贴 |
 | `html-file` | 完整独立 HTML 文档 | 浏览器打开、打印成 PDF |
+| `sh-html` | SyntaxHighlighter 3 的 class 标记（`div.line` + `code.语言`） | 已加载 shTheme 样式表的网页、codeinword 风格嵌入 |
 | `svg` | 矢量代码图（可加 `width_in` 定宽） | Word / PPT / PDF 插图；也可交给 `univer_compile_svg` |
 | `svg-png` | 同版式的 `.svg` + `.png` 一对文件 | 文档需要矢量图与位图兜底时 |
 | `png` | Pillow 栅格化的位图，含 DPI 元数据 | 无 SVG 支持的编辑器、PDF 排版、快速预览 |
@@ -111,8 +117,13 @@ import { renderHtml } from 'dsh-code-highlight/src/render.js';
 
 ### 各报告格式的落地流程
 
+- **codeinword.com 的高亮 HTML** —— 直接把它作为 `code` 传入（默认自动识别，必要时 `input_format: "sh-html"`）：
+  这种标记的颜色依赖外部样式表，直接贴进 Word 不显色；配 `format: html` 转成内联样式版（Word 可直接粘贴），
+  或 `svg` / `png` 出插图，`theme` 可任意换肤。
 - **Markdown / HTML** —— `format: html`，把返回片段写进报告。
-- **Word（.docx）** —— `format: svg-png` + `width_in: 6.3`，插入定宽矢量图，或使用同尺寸 PNG。
+- **Word（.docx）** —— 两条路：`format: svg-png` + `width_in: 6.3` 插入定宽矢量图（或同尺寸 PNG）；
+  或 `format: html` 直接粘贴为 Word 原生彩色文本——行结构是表格、行号独立成列（长行折行不错位）、
+  行首缩进用 `&nbsp;`、title 不进代码格且不可选中；已在 LibreOffice 实测逐行渲染正常，真 Word 未实测。
 - **PDF** —— `format: png` 直接排版，或 `format: latex` 由 LaTeX 排版、`html-file` 打印。
 - **LaTeX / PDF 论文** —— `format: latex`（`listings`）或 `format: latex-minted`。
 - **PowerPoint** —— `format: svg` + `canvas: "960x540"`，再用 `univer_compile_svg` 编译到幻灯片页。
@@ -139,7 +150,7 @@ flowchart TD
     detect["src/detect.js<br/>特征打分"]
     langs["src/languages.js<br/>68 种语言的词法定义"]
     tokenize["src/tokenize.js<br/>通用分词器 + 专用扫描模式"]
-    themes["src/themes.js<br/>7 套主题"]
+    themes["src/themes.js<br/>15 套主题"]
     render["src/render.js<br/>渲染器 + blockGeometry 共用几何"]
     raster["py/rasterize.py<br/>Pillow 栅格化器"]
 
@@ -151,7 +162,7 @@ flowchart TD
     tokenize -->|"每行 token"| render
     themes --> render
     entry --> render
-    render --> f1["html · html-file"]
+    render --> f1["html · html-file · sh-html"]
     render --> f2["svg"]
     render --> f3["latex · latex-minted"]
     render --> f4["ansi · markdown · text"]
@@ -183,7 +194,7 @@ flowchart TB
     src --> languages["languages.js<br/>68 种语言"]
     src --> detect["detect.js<br/>语言识别"]
     src --> tokenize["tokenize.js<br/>分词器"]
-    src --> themes["themes.js<br/>7 套主题"]
+    src --> themes["themes.js<br/>15 套主题"]
     src --> render["render.js<br/>渲染器 + 共用几何"]
 
     tests --> encoding["encoding.mjs<br/>编码守卫"]

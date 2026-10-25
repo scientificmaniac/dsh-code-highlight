@@ -16,11 +16,13 @@ import { fileURLToPath } from 'node:url';
 
 import { resolveLanguage } from './src/languages.js';
 import { detectLanguage } from './src/detect.js';
-import { tokenizeLines, setLanguageResolver } from './src/tokenize.js';
+import { tokenizeLines, linesToText, setLanguageResolver } from './src/tokenize.js';
+import { parseShHtml, looksLikeShHtml } from './src/shhtml.js';
 import { THEMES, THEME_IDS, resolveTheme, colorFor, decorationsFor } from './src/themes.js';
 import {
   renderHtml,
   renderHtmlDocument,
+  renderShHtml,
   renderSvg,
   renderLatex,
   renderAnsi,
@@ -35,7 +37,7 @@ setLanguageResolver(resolveLanguage);
 const TOOL_NAME = 'highlight_code';
 
 /** 支持的输出格式。 */
-const FORMATS = ['html', 'html-file', 'svg', 'svg-png', 'png', 'latex', 'latex-minted', 'markdown', 'ansi', 'text'];
+const FORMATS = ['html', 'html-file', 'sh-html', 'svg', 'svg-png', 'png', 'latex', 'latex-minted', 'markdown', 'ansi', 'text'];
 
 /** 必须写文件的格式。 */
 const FILE_FORMATS = ['png', 'svg-png'];
@@ -79,6 +81,11 @@ const PARAMETERS = {
       type: 'string',
       enum: FORMATS,
       description: 'Where the code will land; see the tool description for the destination of each value.',
+    },
+    input_format: {
+      type: 'string',
+      enum: ['auto', 'text', 'sh-html'],
+      description: 'What `code` contains. `auto` (default) detects SyntaxHighlighter markup such as the HTML exported by codeinword.com; `text` forces plain-source treatment; `sh-html` forces the highlighted-HTML interpretation.',
     },
     theme: {
       type: 'string',
@@ -168,6 +175,7 @@ const OUTPUT_SCHEMA = {
     language: { type: 'string', description: 'Resolved language id.' },
     languageName: { type: 'string', description: 'Human-readable language name.' },
     format: { type: 'string', description: 'Rendered format.' },
+    inputFormat: { type: 'string', description: 'How `code` was interpreted: `text` for plain source, `sh-html` for pre-highlighted SyntaxHighlighter markup.' },
     theme: { type: 'string', description: 'Theme id actually used.' },
     lines: { type: 'integer', description: 'Number of rendered lines.' },
     characters: { type: 'integer', description: 'Length of the rendered content in characters.' },
@@ -208,6 +216,7 @@ function defineHighlightTool() {
       'Choose `format` by destination:',
       '- `html` (default): inline-styled fragment; paste into Markdown, HTML, email, or any rich-text field that accepts HTML.',
       '- `html-file`: a complete standalone HTML document; open it in a browser or print it to PDF.',
+      '- `sh-html`: the class-based SyntaxHighlighter markup (div.line + code spans) exported by codeinword.com, for pages that already load its stylesheet. The reverse also works: pass that exported HTML as `code` and the tool re-renders it into any format here (auto-detected, or force with `input_format: "sh-html"`).',
       '- `svg`: a vector code image; insert it into Word, PowerPoint or PDF, or compile it onto a Univer slide page with univer_compile_svg.',
       '- `png`: a raster image produced by the bundled Pillow rasterizer, so no browser or Office process is involved; the file records the DPI you asked for.',
       '- `svg-png`: writes both, laid out identically, so a document gets a scalable figure and a bitmap fallback.',
@@ -222,9 +231,12 @@ function defineHighlightTool() {
     output: {
       schema: OUTPUT_SCHEMA,
       render(_args, value) {
-        if (value.format === 'text') return [{ type: 'text', text: value.content }];
+        // text 且内容在返回体里时给裸文本；写进文件时走下面的头部 + 落盘提示，
+        // 否则调用方拿不到任何成功反馈。
+        if (value.format === 'text' && value.content) return [{ type: 'text', text: value.content }];
         const header = `Highlighted ${value.lines} line${value.lines === 1 ? '' : 's'} of ${value.languageName} as ${value.format} (${value.theme} theme).`;
         const notes = [];
+        if (value.inputFormat === 'sh-html') notes.push('Input was pre-highlighted SyntaxHighlighter HTML; tokens, language and start line were taken from the markup.');
         if (!value.recognized) notes.push('The language was not recognized, so the snippet is rendered as plain text.');
         for (const file of value.files || []) {
           const size = file.width ? `, ${file.width}x${file.height} px at ${file.dpi} dpi` : '';
@@ -256,12 +268,29 @@ function defineHighlightTool() {
     },
     execute(args, exec) {
       const raw = typeof args.code === 'string' ? args.code : '';
-      const code = stripFence(raw);
-      if (!code.trim()) throw new Error(`${TOOL_NAME}: \`code\` must contain the snippet to highlight`);
+      const fenced = stripFence(raw);
+      if (!fenced.trim()) throw new Error(`${TOOL_NAME}: \`code\` must contain the snippet to highlight`);
+
+      const inputFormat = ['auto', 'text', 'sh-html'].includes(args.input_format) ? args.input_format : 'auto';
+      let shParsed = null;
+      if (inputFormat === 'sh-html') {
+        shParsed = parseShHtml(fenced);
+        if (!shParsed) throw new Error(`${TOOL_NAME}: \`input_format\` is "sh-html" but \`code\` contains no SyntaxHighlighter markup`);
+      } else if (inputFormat === 'auto' && looksLikeShHtml(fenced)) {
+        shParsed = parseShHtml(fenced);
+      }
+      // 尾换行是粘贴常态，不剥掉会多渲染一行（PNG 底部多一条空带、HTML 多一个空行号）。
+      // 只剥一个，放在工具入口而非分词器——分词必须保持往返无损。
+      const code = shParsed
+        ? (shParsed.form === 'tokens' ? linesToText(shParsed.lines).join('\n') : shParsed.source)
+        : fenced.replace(/\r?\n$/, '');
 
       const requested = typeof args.language === 'string' ? args.language.trim() : '';
       let definition = requested ? resolveLanguage(requested) : undefined;
       let detected = false;
+      if (!definition && !requested && shParsed && shParsed.language) {
+        definition = resolveLanguage(shParsed.language);
+      }
       if (!definition && !requested) {
         definition = detectLanguage(code);
         detected = !!definition;
@@ -280,7 +309,7 @@ function defineHighlightTool() {
         showTitle: args.show_title !== false,
         documentTitle: typeof args.document_title === 'string' && args.document_title.trim() ? args.document_title.trim() : undefined,
         lineNumbers: args.line_numbers !== false,
-        startLine: Number.isInteger(args.start_line) && args.start_line > 0 ? args.start_line : 1,
+        startLine: Number.isInteger(args.start_line) && args.start_line > 0 ? args.start_line : (shParsed && shParsed.startLine) || 1,
         highlightLines: normalizeHighlights(args.highlight_lines),
         fontSize: resolveFontSize(args),
         lineHeight: Number.isFinite(args.line_height) && args.line_height >= 1 ? Math.min(args.line_height, 4) : 1.5,
@@ -300,7 +329,7 @@ function defineHighlightTool() {
       const target = requestedPath ? resolveOutput(requestedPath, exec) : undefined;
       const stem = target ? target.replace(/\.(png|svg|html?|tex|txt|md|ansi)$/i, '') : undefined;
 
-      const lines = tokenizeLines(code, language, { tabSize });
+      const lines = shParsed && shParsed.form === 'tokens' ? shParsed.lines : tokenizeLines(code, language, { tabSize });
       const files = [];
       let content = null;
       let rasterizer = null;
@@ -311,6 +340,9 @@ function defineHighlightTool() {
           break;
         case 'html-file':
           content = renderHtmlDocument([{ lines, language: language.id, title: options.title }], options);
+          break;
+        case 'sh-html':
+          content = renderShHtml(lines, options);
           break;
         case 'svg':
           content = renderSvg(lines, options);
@@ -366,6 +398,7 @@ function defineHighlightTool() {
         language: language.id,
         languageName: language.name,
         format,
+        inputFormat: shParsed ? 'sh-html' : 'text',
         theme: themeId,
         lines: lines.length,
         characters,

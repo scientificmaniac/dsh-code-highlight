@@ -4,6 +4,11 @@
  * 每个主题给出一套背景/前景/行号色，以及按 token kind 的取色。
  * 渲染器只通过 `colorFor` / `decorationsFor` 取色，不直接读具体字段，
  * 因此新增主题不需要改渲染器。
+ *
+ * 可选字段（SyntaxHighlighter 系主题使用，其余渲染器按缺省处理）：
+ * - `highlightLine`：`highlight_lines` 强调行的底色（缺省用 `titleBar`）。
+ * - `gutterEdge`：行号列右侧竖条颜色。
+ * - `gutterHighlight`：强调行行号的 `{background, color}`。
  */
 
 /** 所有主题。键为对外暴露的主题 id。 */
@@ -134,6 +139,180 @@ export const THEMES = {
     backgrounds: { inserted: '#0b3d2c', deleted: '#4a1f1f' },
     decorations: { comment: 'italic', heading: 'bold', meta: 'italic', annotation: 'italic' },
   },
+
+  // ------------------------------------------------------------------
+  // SyntaxHighlighter 3.0.83 经典主题（codeinword.com 演示的同款高亮方式）。
+  // 色值取自官方 shTheme*.css；`highlightLine` / `gutterEdge` /
+  // `gutterHighlight` 分别对应被强调行、行号列右侧竖条与强调行的行号底色。
+  // 类名映射：keyword←keyword、string←string、comments←comment、value←number、
+  // functions←function/builtin、constants←constant、variable←variable、
+  // preprocessor←meta、color1←property/attr、color2←type/annotation、
+  // tag←keyword（Eclipse 采用其 xml 覆盖色）、operator/punctuation←plain。
+  // ------------------------------------------------------------------
+  'sh-default': {
+    label: 'SyntaxHighlighter Default',
+    dark: false,
+    background: '#ffffff',
+    border: '#d0d0d0',
+    lineNumber: '#afafaf',
+    titleBar: '#f0f0f0',
+    highlightLine: '#e0e0e0',
+    gutterEdge: '#6ce26c',
+    gutterHighlight: { background: '#6ce26c', color: '#ffffff' },
+    colors: {
+      plain: '#000000', keyword: '#006699', string: '#0000ff', comment: '#008200',
+      number: '#009900', function: '#ff1493', type: '#ff1493', builtin: '#ff1493',
+      constant: '#0066cc', operator: '#000000', punctuation: '#000000', variable: '#aa7700',
+      property: '#808080', tag: '#006699', attr: '#808080', meta: '#808080',
+      annotation: '#ff1493', inserted: '#009900', deleted: '#ff0000', heading: '#006699',
+      link: '#0066cc', emphasis: '#000000', code: '#0000ff',
+    },
+    backgrounds: { inserted: '#e0f2e0', deleted: '#f9e3e3' },
+    decorations: { keyword: 'bold' },
+  },
+  'sh-django': {
+    label: 'SyntaxHighlighter Django',
+    dark: true,
+    background: '#0a2b1d',
+    border: '#123c2a',
+    lineNumber: '#497958',
+    titleBar: '#0e3826',
+    highlightLine: '#233729',
+    gutterEdge: '#41a83e',
+    gutterHighlight: { background: '#41a83e', color: '#0a2b1d' },
+    colors: {
+      plain: '#f8f8f8', keyword: '#96dd3b', string: '#9df39f', comment: '#336442',
+      number: '#f7e741', function: '#ffaa3e', type: '#91bb9e', builtin: '#ffaa3e',
+      constant: '#e0e8ff', operator: '#f8f8f8', punctuation: '#f8f8f8', variable: '#ffaa3e',
+      property: '#91bb9e', tag: '#96dd3b', attr: '#91bb9e', meta: '#91bb9e',
+      annotation: '#eb939a', inserted: '#9df39f', deleted: '#eb939a', heading: '#96dd3b',
+      link: '#e0e8ff', emphasis: '#f8f8f8', code: '#9df39f',
+    },
+    backgrounds: { inserted: '#14351f', deleted: '#3d1a24' },
+    decorations: { keyword: 'bold', comment: 'italic' },
+  },
+  'sh-eclipse': {
+    label: 'SyntaxHighlighter Eclipse',
+    dark: false,
+    background: '#ffffff',
+    border: '#d4d0c8',
+    lineNumber: '#787878',
+    titleBar: '#f0f0f0',
+    highlightLine: '#c3defe',
+    gutterEdge: '#d4d0c8',
+    gutterHighlight: { background: '#d4d0c8', color: '#ffffff' },
+    colors: {
+      plain: '#000000', keyword: '#7f0055', string: '#2a00ff', comment: '#3f5fbf',
+      number: '#009900', function: '#ff1493', type: '#ff1493', builtin: '#ff1493',
+      constant: '#0066cc', operator: '#000000', punctuation: '#000000', variable: '#aa7700',
+      property: '#808080', tag: '#3f7f7f', attr: '#7f007f', meta: '#646464',
+      annotation: '#ff1493', inserted: '#009900', deleted: '#ff0000', heading: '#7f0055',
+      link: '#0066cc', emphasis: '#000000', code: '#2a00ff',
+    },
+    backgrounds: { inserted: '#e0f0e0', deleted: '#fbe4e4' },
+    decorations: { keyword: 'bold' },
+  },
+  'sh-emacs': {
+    label: 'SyntaxHighlighter Emacs',
+    dark: true,
+    background: '#000000',
+    border: '#2a2a2a',
+    lineNumber: '#d3d3d3',
+    titleBar: '#141414',
+    highlightLine: '#2a3133',
+    gutterEdge: '#990000',
+    gutterHighlight: { background: '#990000', color: '#000000' },
+    colors: {
+      plain: '#d3d3d3', keyword: '#00ffff', string: '#ff9e7b', comment: '#ff7d27',
+      number: '#009900', function: '#81cef9', type: '#ff7d27', builtin: '#81cef9',
+      constant: '#ff9e7b', operator: '#d3d3d3', punctuation: '#d3d3d3', variable: '#ffaa3e',
+      property: '#aec4de', tag: '#00ffff', attr: '#aec4de', meta: '#aec4de',
+      annotation: '#ebdb8d', inserted: '#00cc00', deleted: '#ff5555', heading: '#00ffff',
+      link: '#aec4de', emphasis: '#d3d3d3', code: '#ff9e7b',
+    },
+    backgrounds: { inserted: '#0c2b0c', deleted: '#3d0d0d' },
+  },
+  'sh-fadetogrey': {
+    label: 'SyntaxHighlighter FadeToGrey',
+    dark: true,
+    background: '#121212',
+    border: '#2c2c29',
+    lineNumber: '#afafaf',
+    titleBar: '#1a1a1a',
+    highlightLine: '#2c2c29',
+    gutterEdge: '#3185b9',
+    gutterHighlight: { background: '#3185b9', color: '#121212' },
+    colors: {
+      plain: '#ffffff', keyword: '#d01d33', string: '#e3e658', comment: '#696854',
+      number: '#009900', function: '#aaaaaa', type: '#4a8cdb', builtin: '#aaaaaa',
+      constant: '#96daff', operator: '#ffffff', punctuation: '#ffffff', variable: '#898989',
+      property: '#ffc074', tag: '#d01d33', attr: '#ffc074', meta: '#435a5f',
+      annotation: '#4a8cdb', inserted: '#e3e658', deleted: '#d01d33', heading: '#d01d33',
+      link: '#96daff', emphasis: '#ffffff', code: '#e3e658',
+    },
+    backgrounds: { inserted: '#242713', deleted: '#331418' },
+    decorations: { function: 'bold' },
+  },
+  'sh-mdultra': {
+    label: 'SyntaxHighlighter MDUltra',
+    dark: true,
+    background: '#222222',
+    border: '#333333',
+    lineNumber: '#38566f',
+    titleBar: '#2a2a2a',
+    highlightLine: '#253e5a',
+    gutterEdge: '#435a5f',
+    gutterHighlight: { background: '#435a5f', color: '#222222' },
+    colors: {
+      plain: '#00ff00', keyword: '#aaaaff', string: '#00ff00', comment: '#428bdd',
+      number: '#f7e741', function: '#ff8000', type: '#ffff00', builtin: '#ff8000',
+      constant: '#ffff00', operator: '#00ff00', punctuation: '#00ff00', variable: '#00ffff',
+      property: '#ff0000', tag: '#aaaaff', attr: '#ff0000', meta: '#8aa6c1',
+      annotation: '#ffff00', inserted: '#00ff00', deleted: '#ff0000', heading: '#aaaaff',
+      link: '#ffff00', emphasis: '#00ff00', code: '#00ff00',
+    },
+    backgrounds: { inserted: '#1c3a1c', deleted: '#3a1c1c' },
+  },
+  'sh-midnight': {
+    label: 'SyntaxHighlighter Midnight',
+    dark: true,
+    background: '#0f192a',
+    border: '#1f2f45',
+    lineNumber: '#afafaf',
+    titleBar: '#16243a',
+    highlightLine: '#253e5a',
+    gutterEdge: '#435a5f',
+    gutterHighlight: { background: '#435a5f', color: '#0f192a' },
+    colors: {
+      plain: '#d1edff', keyword: '#b43d3d', string: '#1dc116', comment: '#428bdd',
+      number: '#f7e741', function: '#ffaa3e', type: '#ffffff', builtin: '#ffaa3e',
+      constant: '#e0e8ff', operator: '#d1edff', punctuation: '#d1edff', variable: '#ffaa3e',
+      property: '#f8bb00', tag: '#b43d3d', attr: '#f8bb00', meta: '#8aa6c1',
+      annotation: '#f8bb00', inserted: '#1dc116', deleted: '#ff5555', heading: '#b43d3d',
+      link: '#e0e8ff', emphasis: '#d1edff', code: '#1dc116',
+    },
+    backgrounds: { inserted: '#15301a', deleted: '#38191c' },
+  },
+  'sh-rdark': {
+    label: 'SyntaxHighlighter RDark',
+    dark: true,
+    background: '#1b2426',
+    border: '#2b3436',
+    lineNumber: '#afafaf',
+    titleBar: '#232d2f',
+    highlightLine: '#323e41',
+    gutterEdge: '#435a5f',
+    gutterHighlight: { background: '#435a5f', color: '#1b2426' },
+    colors: {
+      plain: '#b9bdb6', keyword: '#5ba1cf', string: '#5ce638', comment: '#878a85',
+      number: '#009900', function: '#ffaa3e', type: '#ffffff', builtin: '#ffaa3e',
+      constant: '#e0e8ff', operator: '#b9bdb6', punctuation: '#b9bdb6', variable: '#ffaa3e',
+      property: '#e0e8ff', tag: '#5ba1cf', attr: '#e0e8ff', meta: '#435a5f',
+      annotation: '#e0e8ff', inserted: '#5ce638', deleted: '#ff5555', heading: '#5ba1cf',
+      link: '#e0e8ff', emphasis: '#b9bdb6', code: '#5ce638',
+    },
+    backgrounds: { inserted: '#1d3a22', deleted: '#3a1f1f' },
+  },
 };
 
 /** 主题 id 列表。 */
@@ -165,6 +344,22 @@ const ALIASES = new Map(Object.entries({
   'vscode-dark': DEFAULT_DARK,
   'vscode-light': DEFAULT_LIGHT,
   night: 'one-dark',
+  // SyntaxHighlighter 经典主题（codeinword.com 同款）。
+  sh: 'sh-default',
+  shdefault: 'sh-default',
+  'syntax-highlighter': 'sh-default',
+  syntaxhighlighter: 'sh-default',
+  codeinword: 'sh-default',
+  django: 'sh-django',
+  eclipse: 'sh-eclipse',
+  emacs: 'sh-emacs',
+  fadetogrey: 'sh-fadetogrey',
+  'fade-to-grey': 'sh-fadetogrey',
+  mdultra: 'sh-mdultra',
+  'md-ultra': 'sh-mdultra',
+  midnight: 'sh-midnight',
+  rdark: 'sh-rdark',
+  'r-dark': 'sh-rdark',
 }));
 
 /**

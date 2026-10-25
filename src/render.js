@@ -8,8 +8,8 @@
 import { linesToText } from './tokenize.js';
 import { colorFor, backgroundFor, decorationsFor } from './themes.js';
 
-/** 等宽字体栈：优先本地 UI 等宽字体，再退到通用等宽族。 */
-export const DEFAULT_MONO = "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', 'Courier New', monospace";
+/** 等宽字体栈：首项给具体字体名，Word / 邮件 / PDF 打印器不认 CSS 系统关键字。 */
+export const DEFAULT_MONO = "Consolas, 'SF Mono', Menlo, 'Liberation Mono', 'Courier New', ui-monospace, monospace";
 
 /** 转义 HTML 文本节点与 XML 文本。 */
 export function escapeXml(value) {
@@ -74,6 +74,11 @@ function lineBackground(theme, tokens) {
 
 /**
  * 渲染 HTML 片段（全内联样式，可直接粘进 Markdown / HTML / 邮件 / Word）。
+ *
+ * 行结构用表格：每行一个 `tr`，行号与代码各占一格。这是 SyntaxHighlighter
+ * 原版的 DOM 形态，也是 Word / LibreOffice 唯一可靠逐行渲染的写法——
+ * `display:block` 的 span 在两者中都不可用，且行号独立成列后长行折行不会错位。
+ * 行首缩进输出为 `&nbsp;`，避免粘贴时被折叠。
  * @param {{k:string,v:string}[][]} lines 分词结果。
  * @param {object} [options] 渲染选项。
  * @returns {string} HTML 片段。
@@ -87,10 +92,8 @@ export function renderHtml(lines, options = {}) {
   const startLine = options.startLine || 1;
   const pad = options.padding === undefined ? 14 : options.padding;
   const highlights = normalizeHighlightLines(options.highlightLines, lines.length, startLine);
-  const digits = String(startLine + lines.length - 1).length;
-  const gutterWidth = `${digits}ch`;
 
-  const pre = [
+  const box = [
     'margin:0',
     `padding:${pad}px 0`,
     `background:${theme.background}`,
@@ -101,31 +104,58 @@ export function renderHtml(lines, options = {}) {
     `font-family:${fontFamily}`,
     `font-size:${fontSize}px`,
     `line-height:${lineHeight}`,
-    'tab-size:4',
     'text-align:left',
-    'white-space:pre',
   ].join(';');
 
-  const out = [`<pre style="${pre}"><code style="font-family:inherit;font-size:inherit;line-height:inherit;color:inherit;white-space:pre">`];
+  const out = [
+    `<div style="${box}">`,
+    `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:auto;margin:0;font-family:inherit;font-size:inherit;line-height:inherit;color:inherit">`,
+  ];
 
   if (options.title && options.showTitle !== false) {
-    out.push(`<span style="display:block;padding:0 ${pad}px ${Math.max(8, Math.round(fontSize * 0.7))}px;color:${theme.lineNumber};font-size:${Math.max(10, fontSize - 2)}px">${escapeXml(options.title)}</span>`);
+    const colspan = showNumbers ? 2 : 1;
+    out.push(`<tr><td colspan="${colspan}" style="padding:0 ${pad}px ${Math.max(8, Math.round(fontSize * 0.7))}px;color:${theme.lineNumber};font-size:${Math.max(10, fontSize - 2)}px;user-select:none;-webkit-user-select:none">${escapeXml(options.title)}</td></tr>`);
   }
-
-  const numberWidth = showNumbers ? `width:${gutterWidth};text-align:right;padding-right:${pad}px;color:${theme.lineNumber};user-select:none;-webkit-user-select:none` : null;
 
   for (let index = 0; index < lines.length; index++) {
     const tokens = lines[index];
     const lineNo = startLine + index;
-    const rowStyle = ['display:block', `padding:0 ${pad}px`];
-    const background = lineBackground(theme, tokens) || (highlights.has(lineNo) ? theme.titleBar : null);
-    if (background) rowStyle.push(`background:${background}`);
-    const body = tokens.map((token) => (token.k === 'plain' ? escapeXml(token.v) : `<span style="${tokenCss(theme, token)}">${escapeXml(token.v)}</span>`)).join('');
-    const gutter = numberWidth ? `<span style="display:inline-block;${numberWidth}">${lineNo}</span>` : '';
-    out.push(`<span style="${rowStyle.join(';')}">${gutter}${body || ' '}</span>`);
+    const emphasized = highlights.has(lineNo);
+    const background = lineBackground(theme, tokens) || (emphasized ? (theme.highlightLine || theme.titleBar) : null);
+    const cells = [];
+
+    if (showNumbers) {
+      const gutter = [
+        `padding:0 ${pad}px`,
+        'text-align:right',
+        'vertical-align:top',
+        'white-space:nowrap',
+        `color:${theme.lineNumber}`,
+        'user-select:none',
+        '-webkit-user-select:none',
+      ];
+      if (theme.gutterEdge) gutter.push(`border-right:3px solid ${theme.gutterEdge}`);
+      if (emphasized && theme.gutterHighlight) {
+        gutter.push(`background:${theme.gutterHighlight.background}`, `color:${theme.gutterHighlight.color}`, 'font-weight:600');
+      } else if (background) {
+        gutter.push(`background:${background}`);
+      }
+      cells.push(`<td style="${gutter.join(';')}">${lineNo}</td>`);
+    }
+
+    const body = tokens.map((token, t) => {
+      let text = escapeXml(token.v);
+      if (t === 0) text = text.replace(/^ +/, (spaces) => '&nbsp;'.repeat(spaces.length));
+      return token.k === 'plain' ? text : `<span style="${tokenCss(theme, token)}">${text}</span>`;
+    }).join('');
+    const code = [`padding:0 ${pad}px`, 'white-space:pre', 'vertical-align:top'];
+    if (background) code.push(`background:${background}`);
+    cells.push(`<td style="${code.join(';')}">${body || '&nbsp;'}</td>`);
+
+    out.push(`<tr>${cells.join('')}</tr>`);
   }
 
-  out.push('</code></pre>');
+  out.push('</table>', '</div>');
   return out.join('');
 }
 
@@ -162,7 +192,7 @@ export function renderHtmlDocument(blocks, options = {}) {
   :root { color-scheme: ${theme.dark ? 'dark' : 'light'}; }
   body { margin:0; padding:24px; background:${theme.dark ? '#010409' : '#ffffff'}; color:${colorFor(theme, 'plain')}; font-family:${options.fontFamily || DEFAULT_MONO}; }
   main { max-width: ${options.maxWidthPx || 900}px; margin: 0 auto; }
-  @media print { body { background:#fff; padding:0; } main { max-width: none; } pre { break-inside: avoid; } }
+  @media print { body { background:#fff; padding:0; } main { max-width: none; } table { break-inside: avoid; } }
 </style>
 </head>
 <body>
@@ -362,7 +392,6 @@ export function renderLatex(lines, options = {}) {
   const language = options.language || 'text';
   const backend = options.latexBackend === 'minted' ? 'minted' : 'listings';
   const source = linesToText(lines).join('\n');
-  const caption = options.title ? `\n\\caption{${escapeLatex(options.title)}}` : '';
   const hex = latexHex;
 
   if (backend === 'minted') {
@@ -378,9 +407,12 @@ ${source}
   }
 
   const listingLanguage = LISTINGS_LANGUAGE[language];
+  // caption 走 lstlisting 的选项：浮动体外的 \caption 单独编译会报
+  // "Caption outside float"。
   const listingOptions = [
     listingLanguage ? `language=${listingLanguage}` : null,
     `numbers=${options.lineNumbers === false ? 'none' : 'left'}`,
+    options.title ? `caption={${escapeLatex(options.title)}}` : null,
     `backgroundcolor=\\color[HTML]{${hex(theme.background)}}`,
     `basicstyle=\\ttfamily\\small\\color[HTML]{${hex(colorFor(theme, 'plain'))}}`,
     `keywordstyle=\\color[HTML]{${hex(colorFor(theme, 'keyword'))}}`,
@@ -399,7 +431,7 @@ ${source}
 % Requires: \\usepackage{listings} \\usepackage{xcolor}
 \\begin{lstlisting}[${listingOptions}]
 ${source}
-\\end{lstlisting}${caption}
+\\end{lstlisting}
 % Color reference: keyword ${colorFor(theme, 'keyword')} / string ${colorFor(theme, 'string')} / comment ${colorFor(theme, 'comment')}
 `;
 }
@@ -458,6 +490,49 @@ export function renderAnsi(lines, options = {}) {
     if (!showNumbers) return body;
     return `\u001b[38;2;110;118;129m${String(startLine + index).padStart(3)}\u001b[0m ${body}`;
   }).join('\n') + '\n';
+}
+
+/** token kind → SyntaxHighlighter 类名。 */
+const SH_CLASS_OF = {
+  plain: 'plain', keyword: 'keyword', string: 'string', comment: 'comments',
+  number: 'value', function: 'functions', builtin: 'functions', constant: 'constants',
+  variable: 'variable', meta: 'preprocessor', property: 'color1', attr: 'color1',
+  type: 'color2', annotation: 'color2', tag: 'keyword',
+};
+
+/**
+ * 渲染 SyntaxHighlighter 3 风格的 class 标记 HTML（codeinword.com 的输出格式）。
+ *
+ * 颜色由消费方页面加载的 shTheme*.css 决定，`theme` 不影响该格式；
+ * 缩进与空格输出为 `&nbsp;`，与原版行为一致。
+ * @param {{k:string,v:string}[][]} lines 分词结果。
+ * @param {object} [options] 渲染选项（`language` 作 brush 类名，`startLine` 决定起始行号）。
+ * @returns {string} HTML 片段。
+ */
+export function renderShHtml(lines, options = {}) {
+  const brush = options.language === 'text' ? 'plain' : (options.language || 'plain');
+  const startLine = options.startLine || 1;
+  const emit = (text, kind) => `<code class="${brush} ${kind}">${escapeXml(text).replace(/ /g, '&nbsp;')}</code>`;
+  const out = ['<div class="container">'];
+  for (let index = 0; index < lines.length; index++) {
+    const pieces = [];
+    for (let t = 0; t < lines[index].length; t++) {
+      const token = lines[index][t];
+      const cls = SH_CLASS_OF[token.k] || 'plain';
+      const leading = t === 0 && token.k === 'plain' ? /^([ \t]+)([\s\S]*)$/.exec(token.v) : null;
+      if (leading) {
+        pieces.push(emit(leading[1], 'spaces'));
+        if (leading[2]) pieces.push(emit(leading[2], cls));
+      } else {
+        pieces.push(emit(token.v, cls));
+      }
+    }
+    const number = startLine + index;
+    const alt = index % 2 === 0 ? 'alt2' : 'alt1';
+    out.push(`<div class="line number${number} index${index} ${alt}">${pieces.join('') || '&nbsp;'}</div>`);
+  }
+  out.push('</div>');
+  return out.join('\n');
 }
 
 /**

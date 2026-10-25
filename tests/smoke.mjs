@@ -6,12 +6,15 @@
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveLanguage, LANGUAGE_IDS } from '../src/languages.js';
 import { tokenizeLines, linesToText, setLanguageResolver } from '../src/tokenize.js';
 import { resolveTheme, THEME_IDS } from '../src/themes.js';
+import { parseShHtml, looksLikeShHtml } from '../src/shhtml.js';
 import * as render from '../src/render.js';
+import { apply } from '../index.js';
 import { detectLanguage } from '../src/detect.js';
 
 setLanguageResolver(resolveLanguage);
@@ -279,6 +282,7 @@ const SAMPLES = {
 const formatFunctions = {
   html: (lines, options) => render.renderHtml(lines, options),
   'html-file': (lines, options) => render.renderHtmlDocument([{ lines, language: options.language, title: options.title }], options),
+  'sh-html': (lines, options) => render.renderShHtml(lines, options),
   svg: (lines, options) => render.renderSvg(lines, options),
   latex: (lines, options) => render.renderLatex(lines, options),
   'latex-minted': (lines, options) => render.renderLatex(lines, { ...options, latexBackend: 'minted' }),
@@ -446,7 +450,7 @@ report.push(`examples written: python-highlight.html, go-highlight.svg, sql-high
     { ...base, showTitle: false },
   );
   check('show_title false drops the label everywhere', !/doorbell\.py/.test(withoutTitle));
-  check('show_title false still renders the code', /<pre/.test(withoutTitle));
+  check('show_title false still renders the code', /<table/.test(withoutTitle));
 
   const inch = render.renderSvg(lines, { ...base, widthIn: 6.3 });
   const inchWidth = Number((/width="([\d.]+)in"/.exec(inch) || [])[1]);
@@ -458,6 +462,219 @@ report.push(`examples written: python-highlight.html, go-highlight.svg, sql-high
   check('cjk glyph occupies two cells', Math.abs(cjkWidth - asciiWidth) < 0.001, `${cjkWidth} vs ${asciiWidth}`);
   check('wide code point detector', render.isWideCodePoint('报'.codePointAt(0)) && !render.isWideCodePoint(65));
   check('paper-light theme exists', !!resolveTheme('paper-light', {}) && THEME_IDS.includes('paper-light'));
+}
+
+/* ------------------------------------------------------------------ *
+ * 8. SyntaxHighlighter 经典主题（codeinword.com 同款高亮方式）
+ * ------------------------------------------------------------------ */
+
+{
+  const SH_IDS = ['sh-default', 'sh-django', 'sh-eclipse', 'sh-emacs', 'sh-fadetogrey', 'sh-mdultra', 'sh-midnight', 'sh-rdark'];
+  for (const id of SH_IDS) check(`sh theme ${id} exists`, THEME_IDS.includes(id));
+
+  const aliasCases = {
+    codeinword: 'sh-default', syntaxhighlighter: 'sh-default',
+    django: 'sh-django', eclipse: 'sh-eclipse', emacs: 'sh-emacs',
+    fadetogrey: 'sh-fadetogrey', mdultra: 'sh-mdultra',
+    midnight: 'sh-midnight', rdark: 'sh-rdark',
+  };
+  for (const [alias, id] of Object.entries(aliasCases)) {
+    check(`alias ${alias} → ${id}`, resolveTheme(alias, {}) === resolveTheme(id, {}));
+  }
+
+  const spotColors = [
+    ['sh-default', 'keyword', '#006699'], ['sh-default', 'string', '#0000ff'],
+    ['sh-eclipse', 'tag', '#3f7f7f'], ['sh-eclipse', 'attr', '#7f007f'],
+    ['sh-django', 'keyword', '#96dd3b'], ['sh-rdark', 'string', '#5ce638'],
+    ['sh-midnight', 'plain', '#d1edff'], ['sh-mdultra', 'constant', '#ffff00'],
+  ];
+  for (const [id, kind, expected] of spotColors) {
+    const actual = resolveTheme(id, {}).colors[kind];
+    check(`color ${id}/${kind}`, actual === expected, `got ${actual}`);
+  }
+
+  check('sh-default keyword is bold', resolveTheme('sh-default', {}).decorations.keyword === 'bold');
+  check('django comment is italic', resolveTheme('sh-django', {}).decorations.comment === 'italic');
+  check('fadetogrey function is bold', resolveTheme('sh-fadetogrey', {}).decorations.function === 'bold');
+
+  const lines = tokenizeLines(SAMPLES.python, resolveLanguage('python'), { tabSize: 4 });
+  const shHtml = render.renderHtml(lines, {
+    theme: resolveTheme('sh-default', {}),
+    language: 'python',
+    lineNumbers: true,
+    highlightLines: ['2'],
+    title: 'demo.py',
+  });
+  check('sh html keeps the theme background', shHtml.includes('background:#ffffff'));
+  check('sh html paints the gutter edge stripe', shHtml.includes('border-right:3px solid #6ce26c'));
+  check('sh html paints the emphasized line band', shHtml.includes('background:#e0e0e0'));
+  check('sh html paints the emphasized gutter number', shHtml.includes('background:#6ce26c'));
+
+  const plainHtml = render.renderHtml(lines, {
+    theme: resolveTheme('paper-light', {}),
+    language: 'python',
+    lineNumbers: true,
+    highlightLines: ['2'],
+  });
+  check('legacy themes keep no gutter edge', !plainHtml.includes('border-right:3px solid'));
+
+  const shDemoThemes = ['sh-default', 'sh-eclipse', 'sh-django', 'sh-midnight', 'sh-rdark'];
+  const shDemoBody = shDemoThemes.map((id) => render.renderHtml(lines, {
+    theme: resolveTheme(id, {}),
+    language: 'python',
+    lineNumbers: true,
+    highlightLines: ['2'],
+    title: `demo.py — ${id}`,
+  })).join('\n');
+  fs.writeFileSync(
+    path.join(examplesDir, 'sh-themes-demo.html'),
+    `<!DOCTYPE html>\n<html lang="zh-CN">\n<head><meta charset="utf-8"><title>SyntaxHighlighter 经典主题</title></head>\n<body style="padding:24px;background:#f6f8fa">\n${shDemoBody}\n</body>\n</html>\n`,
+    'utf8',
+  );
+  report.push('');
+  report.push('examples written: sh-themes-demo.html');
+}
+
+/* ------------------------------------------------------------------ *
+ * 9. codeinword / SyntaxHighlighter HTML 导入与导出
+ * ------------------------------------------------------------------ */
+
+{
+  // codeinword.com 实际导出的高亮 HTML（含 &nbsp; 缩进、实体转义、空行）。
+  const SAMPLE = [
+    '<div class="container">',
+    '<div class="line number1 index0 alt2"><code class="python keyword">def</code> <code class="python plain">bubble_sort(arr):</code></div>',
+    '<div class="line number2 index1 alt1"><code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;</code><code class="python plain">n </code><code class="python keyword">=</code> <code class="python functions">len</code><code class="python plain">(arr)</code></div>',
+    '<div class="line number3 index2 alt2"><code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;</code><code class="python comments"># 外层循环控制排序轮数</code></div>',
+    '<div class="line number4 index3 alt1"><code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;</code><code class="python keyword">for</code> <code class="python plain">i </code><code class="python keyword">in</code> <code class="python functions">range</code><code class="python plain">(n):</code></div>',
+    '<div class="line number5 index4 alt2"><code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code><code class="python comments"># 内层循环控制每轮比较次数</code></div>',
+    '<div class="line number6 index5 alt1"><code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code><code class="python keyword">for</code> <code class="python plain">j </code><code class="python keyword">in</code> <code class="python functions">range</code><code class="python plain">(</code><code class="python value">0</code><code class="python plain">, n </code><code class="python keyword">-</code> <code class="python plain">i </code><code class="python keyword">-</code> <code class="python value">1</code><code class="python plain">):</code></div>',
+    '<div class="line number7 index6 alt2"><code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code><code class="python comments"># 如果前一个元素大于后一个元素，则交换它们</code></div>',
+    '<div class="line number8 index7 alt1"><code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code><code class="python keyword">if</code> <code class="python plain">arr[j] &gt; arr[j </code><code class="python keyword">+</code> <code class="python value">1</code><code class="python plain">]:</code></div>',
+    '<div class="line number9 index8 alt2"><code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code><code class="python plain">arr[j], arr[j </code><code class="python keyword">+</code> <code class="python value">1</code><code class="python plain">] </code><code class="python keyword">=</code> <code class="python plain">arr[j </code><code class="python keyword">+</code> <code class="python value">1</code><code class="python plain">], arr[j]</code></div>',
+    '<div class="line number10 index9 alt1"><code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;</code><code class="python keyword">return</code> <code class="python plain">arr</code></div>',
+    '<div class="line number11 index10 alt2">&nbsp;</div>',
+    '<div class="line number12 index11 alt1"><code class="python comments"># 测试代码</code></div>',
+    '<div class="line number13 index12 alt2"><code class="python plain">numbers </code><code class="python keyword">=</code> <code class="python plain">[</code><code class="python value">64</code><code class="python plain">, </code><code class="python value">34</code><code class="python plain">, </code><code class="python value">25</code><code class="python plain">, </code><code class="python value">12</code><code class="python plain">, </code><code class="python value">22</code><code class="python plain">, </code><code class="python value">11</code><code class="python plain">, </code><code class="python value">90</code><code class="python plain">]</code></div>',
+    '<div class="line number14 index13 alt1"><code class="python plain">sorted_numbers </code><code class="python keyword">=</code> <code class="python plain">bubble_sort(numbers)</code></div>',
+    '<div class="line number15 index14 alt2"><code class="python functions">print</code><code class="python plain">(</code><code class="python string">"排序后的数组:"</code><code class="python plain">, sorted_numbers)</code></div>',
+    '</div>',
+  ].join('');
+
+  const EXPECTED_SOURCE = [
+    'def bubble_sort(arr):',
+    '    n = len(arr)',
+    '    # 外层循环控制排序轮数',
+    '    for i in range(n):',
+    '        # 内层循环控制每轮比较次数',
+    '        for j in range(0, n - i - 1):',
+    '            # 如果前一个元素大于后一个元素，则交换它们',
+    '            if arr[j] > arr[j + 1]:',
+    '                arr[j], arr[j + 1] = arr[j + 1], arr[j]',
+    '    return arr',
+    '',
+    '# 测试代码',
+    'numbers = [64, 34, 25, 12, 22, 11, 90]',
+    'sorted_numbers = bubble_sort(numbers)',
+    'print("排序后的数组:", sorted_numbers)',
+  ].join('\n');
+
+  const parsed = parseShHtml(SAMPLE);
+  check('sh-html parsed into tokens', !!parsed && parsed.form === 'tokens' && parsed.lines.length === 15,
+    parsed ? `form=${parsed.form} lines=${parsed.lines?.length}` : 'null');
+  check('sh-html brush language detected', !!parsed && parsed.language === 'python');
+  check('sh-html startLine from number class', !!parsed && parsed.startLine === 1);
+
+  const first = parsed && parsed.form === 'tokens' ? parsed.lines[0] : [];
+  check('sh-html line 1 kinds',
+    first.length >= 3 && first[0].k === 'keyword' && first[0].v === 'def'
+    && first[1].v === ' ' && first[2].v === 'bubble_sort(arr):');
+
+  const parsedLines = parsed && parsed.form === 'tokens' ? parsed.lines : [];
+  const line3 = linesToText([parsedLines[2]]).join('');
+  check('sh-html nbsp indent becomes spaces', line3 === '    # 外层循环控制排序轮数', JSON.stringify(line3));
+  const line8 = linesToText([parsedLines[7]]).join('');
+  check('sh-html entities decoded', line8 === '            if arr[j] > arr[j + 1]:', JSON.stringify(line8));
+  check('sh-html keeps the blank line', !!parsedLines[10] && parsedLines[10].length === 0);
+
+  const source = linesToText(parsedLines).join('\n');
+  check('sh-html source reconstruction', source === EXPECTED_SOURCE,
+    JSON.stringify(source.slice(0, 60)));
+
+  check('looksLikeShHtml accepts the sample', looksLikeShHtml(SAMPLE));
+  check('looksLikeShHtml rejects plain code', !looksLikeShHtml('const a = 1;\nprint(a);'));
+  check('looksLikeShHtml rejects line div without code', !looksLikeShHtml('<div class="line">just text</div>'));
+
+  // 换肤重渲：转成 monokai 的行内样式 HTML，不再依赖外部样式表。
+  const recolored = render.renderHtml(parsedLines, { theme: resolveTheme('monokai', {}), language: 'python' });
+  check('sh-html recolors with inline styles', recolored.includes('#f92672') && !recolored.includes('class="python'));
+
+  // 反向导出：emit → reparse 往返后源码一致。
+  const emitted = render.renderShHtml(parsedLines, { language: 'python' });
+  const reparsed = parseShHtml(emitted);
+  check('sh-html emit → reparse roundtrip', !!reparsed && reparsed.form === 'tokens' && linesToText(reparsed.lines).join('\n') === source);
+  check('sh-html emit uses spaces class', emitted.includes('<code class="python spaces">&nbsp;&nbsp;&nbsp;&nbsp;</code>'));
+  check('sh-html emit numbers and zebra lines', emitted.includes('class="line number11 index10 alt2"'));
+
+  const pre = parseShHtml('<pre class="brush: python">print("hi")\n</pre>');
+  check('sh-html accepts the pre/brush form', !!pre && pre.form === 'source' && pre.language === 'python' && pre.source === 'print("hi")');
+}
+
+/* ------------------------------------------------------------------ *
+ * 10. 工具级行为：尾换行、Word 友好 HTML 结构、字体栈
+ * ------------------------------------------------------------------ */
+
+{
+  let tool;
+  apply({ effect: (fn) => fn(), tools: { register: (t) => { tool = t; } } });
+  check('apply registers highlight_code', !!tool && tool.name === 'highlight_code');
+
+  // P2：带尾换行与不带尾换行必须得到同样的行数。
+  const withNewline = tool.execute({ code: 'const a = 1;\nconst b = 2;\n', format: 'text' }, {});
+  const withoutNewline = tool.execute({ code: 'const a = 1;\nconst b = 2;', format: 'text' }, {});
+  check('trailing newline adds no extra line', withNewline.lines === 2 && withoutNewline.lines === 2,
+    `${withNewline.lines} vs ${withoutNewline.lines}`);
+
+  // P1/P3/P5：HTML 输出为表格版式，title 在代码格外且不可选中。
+  const run = tool.execute({
+    code: 'def greet(name):\n    # 问候\n    print(f"hi {name}")\n',
+    language: 'python',
+    format: 'html',
+    theme: 'sh-default',
+    title: 'greet.py',
+  }, {});
+  const html = run.content;
+  check('html uses table rows', /<table[^>]*border-collapse:collapse/.test(html) && (html.match(/<tr>/g) || []).length === 4);
+  check('html has no display:block span', !html.includes('display:block'));
+  check('html keeps one pre-formatted cell per line', (html.match(/white-space:pre/g) || []).length === 3);
+  check('html line numbers are table cells', /<td style="[^"]*text-align:right[^"]*"[^>]*>2<\/td>/.test(html));
+  check('html title sits outside code cells', /<td colspan="2"[^>]*user-select:none[^>]*>greet\.py<\/td>/.test(html));
+  check('html leading indent uses nbsp', /white-space:pre;vertical-align:top"[^>]*>(?:&nbsp;)+/.test(html));
+  check('html blank/empty lines keep a row height', !/> <\/td>/.test(html));
+
+  // P4：字体栈首项必须是具体字体名，非 CSS 系统关键字。
+  check('mono stack starts with a concrete font', render.DEFAULT_MONO.startsWith('Consolas,'));
+
+  // 空行渲染为 &nbsp; 占位（Word 中保持行高）。
+  const blank = tool.execute({ code: 'a\n\nb', format: 'html' }, {});
+  check('html empty line becomes nbsp cell', /<td style="[^"]*white-space:pre[^"]*">&nbsp;<\/td>/.test(blank.content));
+
+  // 尾随换行（含 CRLF 粘贴）不得多出空行——15 行代码必须是 15 行。
+  const fifteen = 'def f():\n' + '    x = 1\n'.repeat(13) + '    return x';
+  check('trailing \\n and \\r\\n keep 15 lines',
+    tool.execute({ code: fifteen + '\n', format: 'text' }, {}).lines === 15
+    && tool.execute({ code: fifteen + '\r\n', format: 'text' }, {}).lines === 15);
+
+  // text + output_file：内容为空时 render() 仍要给成功反馈。
+  const tmp = path.join(os.tmpdir(), `dsh-smoke-text-${process.pid}-${Date.now()}.txt`);
+  const written = tool.execute({ code: 'x = 1\n', format: 'text', output_file: tmp }, {});
+  const feedback = tool.output.render({}, written)[0].text;
+  check('text + output_file returns feedback', written.content === '' && written.files.length === 1 && feedback.includes('Wrote text to'));
+  fs.rmSync(tmp, { force: true });
+
+  // listings 的 caption 必须走选项：浮动体外的 \caption 单独编译报 "Caption outside float"。
+  const tex = render.renderLatex([[{ k: 'plain', v: 'x = 1' }]], { theme: resolveTheme('paper-light', {}), language: 'python', title: 'demo.py' });
+  check('latex caption uses the listing option', tex.includes('caption={demo.py}') && !tex.includes('\\caption{'));
 }
 
 /* ------------------------------------------------------------------ *

@@ -18,8 +18,11 @@ PowerPoint, PDF and LaTeX.
 ## Features
 
 - **68 languages** — resolved by id, alias or file extension; detected from the content when `language` is omitted, and rendered as plain text when detection is not confident.
-- **10 formats** — `html`, `html-file`, `svg`, `svg-png`, `png`, `latex`, `latex-minted`, `markdown`, `ansi`, `text`.
-- **7 themes** — `paper-light` (document-oriented), `github-dark`, `github-light`, `one-dark`, `monokai`, `solarized-light`, `solarized-dark`, plus `auto`.
+- **11 formats** — `html`, `html-file`, `sh-html`, `svg`, `svg-png`, `png`, `latex`, `latex-minted`, `markdown`, `ansi`, `text`.
+- **codeinword / SyntaxHighlighter HTML import** — feed in the class-marked HTML exported by [codeinword.com](https://www.codeinword.com/) and re-render it as inline-styled HTML, SVG, PNG, LaTeX or any other format (re-theme it while converting); that markup form can be exported back out too.
+- **15 themes** — `paper-light` (document-oriented), `github-dark`, `github-light`, `one-dark`, `monokai`, `solarized-light`, `solarized-dark`,
+  plus the eight classic SyntaxHighlighter 3.0.83 themes demonstrated on [codeinword.com](https://www.codeinword.com/):
+  `sh-default`, `sh-django`, `sh-eclipse`, `sh-emacs`, `sh-fadetogrey`, `sh-mdultra`, `sh-midnight`, `sh-rdark`, plus `auto`.
 - **One geometry for vector and raster** — the SVG and the PNG come from the same layout model, so their physical size and per-cell positions match.
 - **Document-oriented layout** — `width_in`, `dpi`, `font_size_pt`, `line_height`, `show_title` produce a figure that fits a page column directly.
 - **Writes files** — pass `output_file` and the artifact is written to disk; the path comes back instead of a long body.
@@ -77,7 +80,8 @@ import { renderHtml } from 'dsh-code-highlight/src/render.js';
 | `code` (required) | The code to highlight. Fenced block markers and a trailing newline are tolerated. |
 | `language` | Language id, alias or extension, such as `python`, `py`, `ts`, `c++`, `bash`, `sql`, `latex`. Omit to detect it. |
 | `format` | Output format, `html` by default. |
-| `theme` | Theme id or `auto`. `paper-light` suits printed reports. |
+| `input_format` | How to read `code`: `auto` (default, detects SyntaxHighlighter markup), `text` (plain source), `sh-html` (force the highlighted-HTML interpretation). |
+| `theme` | Theme id or `auto`. `paper-light` suits printed reports. The SyntaxHighlighter themes are also reachable as `django`, `eclipse`, `emacs`, `fadetogrey`, `mdultra`, `midnight`, `rdark`, `codeinword`, and other aliases. |
 | `dark` | Light/dark preference used only when `theme` is `auto`. Defaults to dark. |
 | `title` | Block label, typically the file name or the snippet's purpose. |
 | `show_title` | Show `title`; defaults to true. Set false to drop the file name entirely. |
@@ -101,8 +105,9 @@ import { renderHtml } from 'dsh-code-highlight/src/render.js';
 
 | `format` | Artifact | Typical destination |
 | --- | --- | --- |
-| `html` | Inline-styled HTML fragment | Markdown or HTML reports, email, rich-text fields |
+| `html` | Inline-styled HTML fragment in a table layout — line numbers in their own column, indentation as `&nbsp;` — so Word / LibreOffice paste it as per-line colored text (verified in LibreOffice) | Markdown or HTML reports, email, native Word paste |
 | `html-file` | Complete standalone HTML document | Open in a browser, print to PDF |
+| `sh-html` | SyntaxHighlighter 3 class markup (`div.line` + `code.<lang>`) | Pages already loading an shTheme stylesheet, codeinword-style embedding |
 | `svg` | Vector code figure (optionally sized by `width_in`) | Word / PowerPoint / PDF figures, or `univer_compile_svg` |
 | `svg-png` | The `.svg` and a matching `.png` | Documents that want a scalable figure plus a bitmap fallback |
 | `png` | Pillow raster with DPI metadata | Editors without SVG support, PDF layout, quick preview |
@@ -137,7 +142,7 @@ flowchart TD
     detect["src/detect.js<br/>feature scoring"]
     langs["src/languages.js<br/>lexical rules for 68 languages"]
     tokenize["src/tokenize.js<br/>generic tokenizer + per-mode scanners"]
-    themes["src/themes.js<br/>7 themes"]
+    themes["src/themes.js<br/>15 themes"]
     render["src/render.js<br/>renderers + blockGeometry"]
     raster["py/rasterize.py<br/>Pillow rasterizer"]
 
@@ -149,7 +154,7 @@ flowchart TD
     tokenize -->|"tokens per line"| render
     themes --> render
     entry --> render
-    render --> f1["html · html-file"]
+    render --> f1["html · html-file · sh-html"]
     render --> f2["svg"]
     render --> f3["latex · latex-minted"]
     render --> f4["ansi · markdown · text"]
@@ -182,7 +187,7 @@ flowchart TB
     src --> languages["languages.js<br/>68 languages"]
     src --> detect["detect.js<br/>detection"]
     src --> tokenize["tokenize.js<br/>tokenizer"]
-    src --> themes["themes.js<br/>7 themes"]
+    src --> themes["themes.js<br/>15 themes"]
     src --> render["render.js<br/>renderers + geometry"]
 
     tests --> encoding["encoding.mjs<br/>encoding guard"]
