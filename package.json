@@ -1,6 +1,6 @@
 {
   "name": "dsh-code-highlight",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Syntax-highlighted code for reports: Markdown/HTML fragments, Word- and PowerPoint-ready SVG, a matched PNG raster, LaTeX listings and PDF.",
   "license": "MIT",
   "type": "module",
@@ -55,7 +55,7 @@
   "icon": "./icon.svg",
   "meta": {
     "title": "报告代码高亮",
-    "description": "把代码片段渲染成 Markdown/HTML、Word/PPT 插图、LaTeX 与 PDF 可用的语法高亮产物，支持 68 种语言与 7 套配色。"
+    "description": "把代码片段渲染成 Markdown/HTML、Word/PPT 插图、LaTeX 与 PDF 可用的语法高亮产物，支持 68 种语言与 15 套配色。"
   },
   "dsh": {
     "bundle": {
